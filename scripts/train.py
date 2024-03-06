@@ -4,6 +4,7 @@ import torch
 import torch.optim as optim
 from torchvision import datasets, transforms
 from torch.optim.lr_scheduler import StepLR
+import torch.nn.functional as F
 from plr_exercise.models import Net
 
 def train(args, model, device, train_loader, optimizer, epoch):
