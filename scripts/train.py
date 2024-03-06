@@ -7,6 +7,10 @@ from torch.optim.lr_scheduler import StepLR
 import torch.nn.functional as F
 from plr_exercise.models import Net
 
+# Wandb
+import wandb
+import random
+
 def train(args, model, device, train_loader, optimizer, epoch):
     model.train()
     for batch_idx, (data, target) in enumerate(train_loader):
@@ -30,6 +34,9 @@ def train(args, model, device, train_loader, optimizer, epoch):
             if args.dry_run:
                 break
 
+            # log metrics to wandb
+            wandb.log({"training loss": loss.item()})      
+
 
 def test(model, device, test_loader, epoch):
     model.eval()
@@ -46,6 +53,9 @@ def test(model, device, test_loader, epoch):
             correct += pred.eq(target.view_as(pred)).sum().item()
 
     test_loss /= len(test_loader.dataset)
+
+    # log metrics to wandb
+    wandb.log({"test acc": 100.0 * correct / len(test_loader.dataset), "test loss": test_loss})
 
     print(
         "\nTest set: Average loss: {:.4f}, Accuracy: {}/{} ({:.0f}%)\n".format(
@@ -86,6 +96,20 @@ def main():
     else:
         device = torch.device("cpu")
 
+    # start a new wandb run to track this script
+    wandb.init(
+        # set the wandb project where this run will be logged
+        project="plr-task_3",
+        
+        # track hyperparameters and run metadata
+        config={
+        "learning_rate": args.lr,
+        "architecture": "CNN",
+        "dataset": "MNIST",
+        "epochs": args.epochs,
+        }
+    )
+
     train_kwargs = {"batch_size": args.batch_size}
     test_kwargs = {"batch_size": args.test_batch_size}
     if use_cuda:
@@ -111,6 +135,14 @@ def main():
     if args.save_model:
         torch.save(model.state_dict(), "mnist_cnn.pt")
 
+    artifact_code = wandb.Artifact(name="code", type='code')
+    artifact_code.add_dir('C:/Users/nicgr/Documents/GitHub/plr-exercise/scripts/')
+    wandb.log_artifact(artifact_code)
+
+    # finish the wandb run, necessary in notebooks
+    wandb.finish()
+
 
 if __name__ == "__main__":
     main()
+    

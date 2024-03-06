@@ -2,3 +2,4 @@
 plr_exercise/__pycache__/
 plr_exercise/models/__pycache__/
 results/*
+wandb/
