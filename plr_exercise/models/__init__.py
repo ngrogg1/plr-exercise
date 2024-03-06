@@ -1,1 +1,1 @@
-from .cnn import Net, train, test
+from .cnn import Net
