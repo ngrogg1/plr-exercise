@@ -9,7 +9,10 @@ from plr_exercise.models import Net
 
 # Wandb
 import wandb
-import random
+
+# Optuna
+import optuna
+
 
 def train(args, model, device, train_loader, optimizer, epoch):
     model.train()
@@ -35,7 +38,7 @@ def train(args, model, device, train_loader, optimizer, epoch):
                 break
 
             # log metrics to wandb
-            wandb.log({"training loss": loss.item()})      
+            wandb.log({"training loss": loss.item()})
 
 
 def test(model, device, test_loader, epoch):
@@ -63,7 +66,10 @@ def test(model, device, test_loader, epoch):
         )
     )
 
-def main():
+    return test_loss
+
+
+def objective(trial):
     # Training settings
     parser = argparse.ArgumentParser(description="PyTorch MNIST Example")
     parser.add_argument(
@@ -72,8 +78,8 @@ def main():
     parser.add_argument(
         "--test-batch-size", type=int, default=1000, metavar="N", help="input batch size for testing (default: 1000)"
     )
-    parser.add_argument("--epochs", type=int, default=2, metavar="N", help="number of epochs to train (default: 14)")
-    parser.add_argument("--lr", type=float, default=1.0, metavar="LR", help="learning rate (default: 1.0)")
+    # parser.add_argument("--epochs", type=int, default=2, metavar="N", help="number of epochs to train (default: 14)")
+    # parser.add_argument("--lr", type=float, default=1.0, metavar="LR", help="learning rate (default: 1.0)")
     parser.add_argument("--gamma", type=float, default=0.7, metavar="M", help="Learning rate step gamma (default: 0.7)")
     parser.add_argument("--no-cuda", action="store_true", default=False, help="disables CUDA training")
     parser.add_argument("--dry-run", action="store_true", default=False, help="quickly check a single pass")
@@ -96,18 +102,20 @@ def main():
     else:
         device = torch.device("cpu")
 
+    lr = trial.suggest_float("lr", 0.00001, 0.001)
+    epochs = trial.suggest_int("epochs", 1, 10)
+
     # start a new wandb run to track this script
     wandb.init(
         # set the wandb project where this run will be logged
         project="plr-task_3",
-        
         # track hyperparameters and run metadata
         config={
-        "learning_rate": args.lr,
-        "architecture": "CNN",
-        "dataset": "MNIST",
-        "epochs": args.epochs,
-        }
+            "learning_rate": lr,
+            "architecture": "CNN",
+            "dataset": "MNIST",
+            "epochs": epochs,
+        },
     )
 
     train_kwargs = {"batch_size": args.batch_size}
@@ -124,19 +132,28 @@ def main():
     test_loader = torch.utils.data.DataLoader(dataset2, **test_kwargs)
 
     model = Net().to(device)
-    optimizer = optim.Adam(model.parameters(), lr=args.lr)
+    optimizer = optim.Adam(model.parameters(), lr=lr)
 
     scheduler = StepLR(optimizer, step_size=1, gamma=args.gamma)
-    for epoch in range(args.epochs):
+    for epoch in range(epochs):
         train(args, model, device, train_loader, optimizer, epoch)
-        test(model, device, test_loader, epoch)
+        test_loss = test(model, device, test_loader, epoch)
         scheduler.step()
 
     if args.save_model:
         torch.save(model.state_dict(), "mnist_cnn.pt")
 
-    artifact_code = wandb.Artifact(name="code", type='code')
-    artifact_code.add_dir('C:/Users/nicgr/Documents/GitHub/plr-exercise/scripts/')
+    return test_loss
+
+
+def main():
+
+    study = optuna.create_study()
+    study.optimize(objective, n_trials=5)
+    print(study.best_params)
+
+    artifact_code = wandb.Artifact(name="code", type="code")
+    artifact_code.add_dir("C:/Users/nicgr/Documents/GitHub/plr-exercise/scripts/")
     wandb.log_artifact(artifact_code)
 
     # finish the wandb run, necessary in notebooks
@@ -145,4 +162,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-    
