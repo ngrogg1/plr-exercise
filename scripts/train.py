@@ -95,9 +95,6 @@ def objective(trial):
     args = parser.parse_args()
     use_cuda = not args.no_cuda and torch.cuda.is_available()
 
-    if torch.cuda.is_available():
-        print("Training on GPU :) \n")
-
     torch.manual_seed(args.seed)
 
     if use_cuda:
@@ -105,8 +102,8 @@ def objective(trial):
     else:
         device = torch.device("cpu")
 
-    lr = trial.suggest_float("lr", 0, 10)
-    epochs = trial.suggest_int("epochs", 1, 15)
+    lr = trial.suggest_float("lr", 0.00001, 0.001)
+    epochs = trial.suggest_int("epochs", 1, 10)
 
     # start a new wandb run to track this script
     wandb.init(
@@ -152,7 +149,7 @@ def objective(trial):
 def main():
 
     study = optuna.create_study()
-    study.optimize(objective, n_trials=20)
+    study.optimize(objective, n_trials=5)
     print(study.best_params)
 
     artifact_code = wandb.Artifact(name="code", type="code")
