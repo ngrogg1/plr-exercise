@@ -5,7 +5,15 @@ import torch.nn.functional as F
 
 
 class Net(nn.Module):
+    """
+    Create a CNN class.
+    
+    public methods:
+    forward
+    """
+
     def __init__(self):
+        """Create the layers of the CNN."""
 
         super(Net, self).__init__()
         self.conv1 = nn.Conv2d(1, 32, 3, 1)
@@ -16,6 +24,15 @@ class Net(nn.Module):
         self.fc2 = nn.Linear(128, 10)
 
     def forward(self, x):
+        """
+        Return the output of a forward pass.
+        
+        Parameter:
+        x: input data
+
+        Return:
+        ouput: result of a forward pass.
+        """
         x = self.conv1(x)
         x = F.relu(x)
         x = self.conv2(x)
